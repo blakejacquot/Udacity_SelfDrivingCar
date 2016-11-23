@@ -1,0 +1,174 @@
+import jupyter
+import numpy as np
+import cv2
+import matplotlib.pyplot as plt
+import scipy
+import sklearn
+import tensorflow
+print(cv2.__version__)
+import time
+import math
+import random
+import pickle
+import time
+import tensorflow as tf
+
+import ml_helpers as ml
+import pre_proc_helpers as proc
+
+def main():
+	# TODO: fill this in based on where you saved the training and testing data
+	training_file = '/Users/blakejacquot/Dropbox/MOOCs/Udacity_SelfDrivingCar/Term1/TrafficSignClassifier/traffic-signs-data/train.p'
+	testing_file = '/Users/blakejacquot/Dropbox/MOOCs/Udacity_SelfDrivingCar/Term1/TrafficSignClassifier/traffic-signs-data/test.p'
+
+	with open(training_file, mode='rb') as f:
+		train = pickle.load(f)
+	with open(testing_file, mode='rb') as f:
+		test = pickle.load(f)
+
+	X_train, y_train = train['features'], train['labels']
+	X_test, y_test = test['features'], test['labels']
+
+	"""Preprocess datasets"""
+	X_test_preproc = X_test
+	X_test_preproc = proc.make_grayscale(X_test_preproc)
+	X_test_preproc = proc.make_gaussian_blur(X_test_preproc, 1)
+	X_test_preproc = proc.normalize(X_test_preproc)
+
+	X_train_preproc = X_train
+	X_train_preproc = proc.make_grayscale(X_train_preproc)
+	X_train_preproc = proc.make_gaussian_blur(X_train_preproc, 1)
+	X_train_preproc = proc.normalize(X_train_preproc)
+
+	"""Format training and test data"""
+	X_test_gray = proc.make_grayscale(X_test)
+	X_train_gray = proc.make_grayscale(X_train)
+	[X_test_shuff, y_test_shuff] = ml.randomize_set(X_test_gray, y_test)
+	[X_train_shuff, y_train_shuff] = ml.randomize_set(X_train_gray, y_train)
+	print(X_test_shuff.shape, y_test_shuff.shape)
+	print(X_train_shuff.shape, y_train_shuff.shape)
+	print(type(X_test_shuff), type(y_test_shuff))
+	print(type(X_train_shuff), type(y_train_shuff))
+	y_shuff_onehot_test = ml.make_one_hot_encoding(y_test_shuff, 43)
+	y_shuff_onehot_train = ml.make_one_hot_encoding(y_train_shuff, 43)
+	print(y_shuff_onehot_test.shape, y_shuff_onehot_train.shape)
+	training_data = ml.expand_x(X_train_shuff)
+	training_labels = y_shuff_onehot_train
+	test_data = ml.expand_x(X_test_shuff)
+	test_labels = y_shuff_onehot_test
+	print(' ')
+	print('Type of training data = ', type(training_data))
+	print('Type of training labels = ', type(training_labels))
+	print('Shape of training labels = ', training_labels.shape)
+	print('Shape of training data = ', training_data.shape)
+
+
+	# Parameters
+	learning_rate = 0.001
+	batch_size = 128
+	training_epochs = 100
+
+	n_input = 1024  # Data input taps. 32 * 32 = 1024
+	n_classes = 43  # Total classes
+
+	layer_width = {
+		'layer_1': 32,
+		'layer_2': 64,
+		'layer_3': 128,
+		'fully_connected': 512
+	}
+
+	# Set up data
+	training_data = ml.expand_x(X_train_shuff)
+	training_labels = y_shuff_onehot_train
+	total_samples = len(training_labels)
+
+	test_data = ml.expand_x(X_test_shuff)
+	test_labels = y_shuff_onehot_test
+
+	# Store layers weight & bias
+	weights = {
+		'layer_1': tf.Variable(tf.truncated_normal(
+			[5, 5, 1, layer_width['layer_1']])),
+		'layer_2': tf.Variable(tf.truncated_normal(
+			[5, 5, layer_width['layer_1'], layer_width['layer_2']])),
+		'layer_3': tf.Variable(tf.truncated_normal(
+			[5, 5, layer_width['layer_2'], layer_width['layer_3']])),
+		'fully_connected': tf.Variable(tf.truncated_normal(
+			[1024, layer_width['fully_connected']])),
+		'out': tf.Variable(tf.truncated_normal(
+			[layer_width['fully_connected'], n_classes]))
+	}
+
+	biases = {
+		'layer_1': tf.Variable(tf.zeros(layer_width['layer_1'])),
+		'layer_2': tf.Variable(tf.zeros(layer_width['layer_2'])),
+		'layer_3': tf.Variable(tf.zeros(layer_width['layer_3'])),
+		'fully_connected': tf.Variable(tf.zeros(layer_width['fully_connected'])),
+		'out': tf.Variable(tf.zeros(n_classes))
+	}
+
+	# tf Graph input
+	x = tf.placeholder("float", [None, 32, 32, 1])
+	y = tf.placeholder("float", [None, n_classes])
+
+	logits = ml.conv_net(x, weights, biases)
+
+	# Define loss and optimizer
+	cost = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits, y))
+	optimizer = tf.train.GradientDescentOptimizer(learning_rate=learning_rate)\
+		.minimize(cost)
+
+
+	# Initializing the variables
+	init = tf.initialize_all_variables()
+
+	# Launch the graph
+	with tf.Session() as sess:
+		sess.run(init)
+
+		# Training cycle
+		print('Starting first epoch')
+		for epoch in range(training_epochs):
+			start_time = time.time()
+			total_batch = int(total_samples/batch_size)
+
+			# Loop over all batches
+			for i in range(total_batch):
+				batch_x = training_data[i*batch_size:i*batch_size+batch_size,:,:]
+				batch_y = training_labels[i*batch_size:i*batch_size+batch_size]
+
+				# Run optimization op (backprop) and cost op (to get loss value)
+				sess.run(optimizer, feed_dict={x: batch_x, y: batch_y})
+
+			# Display logs per epoch step
+			c = sess.run(cost, feed_dict={x: batch_x, y: batch_y})
+			print("Epoch:", '%04d' % (epoch+1), "cost=", "{:.9f}".format(c))
+			elapsed_time = time.time() - start_time
+			print('Time for last epoch (sec) = ', int(elapsed_time))
+		print("Optimization Finished!")
+
+		# Test model
+		correct_prediction = tf.equal(tf.argmax(logits, 1), tf.argmax(y, 1))
+
+		# Calculate accuracy
+		accuracy = tf.reduce_mean(tf.cast(correct_prediction, "float"))
+		print(
+			"Accuracy:",
+			accuracy.eval({x: test_data, y: test_labels}))
+
+
+
+
+
+
+
+
+
+
+
+
+
+if __name__ == "__main__":
+    main()
+
