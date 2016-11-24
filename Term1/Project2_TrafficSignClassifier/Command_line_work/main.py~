@@ -12,13 +12,12 @@ import random
 import pickle
 import time
 import tensorflow as tf
+import sys
 
 import ml_helpers as ml
 import pre_proc_helpers as proc
 
 def main():
-	print('Hello World')
-
 	# TODO: fill this in based on where you saved the training and testing data
 	training_file = '/Users/blakejacquot/Dropbox/MOOCs/Udacity_SelfDrivingCar/Term1/TrafficSignClassifier/traffic-signs-data/train.p'
 	testing_file = '/Users/blakejacquot/Dropbox/MOOCs/Udacity_SelfDrivingCar/Term1/TrafficSignClassifier/traffic-signs-data/test.p'
@@ -45,19 +44,36 @@ def main():
 	"""Format training and test data"""
 	X_test_gray = proc.make_grayscale(X_test)
 	X_train_gray = proc.make_grayscale(X_train)
-	[X_test_shuff, y_test_shuff] = ml.randomize_set(X_test_gray, y_test)
-	[X_train_shuff, y_train_shuff] = ml.randomize_set(X_train_gray, y_train)
+
+
+
+
+	#[X_test_shuff, y_test_shuff] = ml.randomize_set(X_test_gray, y_test)
+	#[X_train_shuff, y_train_shuff] = ml.randomize_set(X_train_gray, y_train)
+	[X_test_shuff, y_test_shuff] = ml.randomize_set(X_test_preproc, y_test)
+	[X_train_shuff, y_train_shuff] = ml.randomize_set(X_train_preproc, y_train)
+
+
+
+	y_shuff_onehot_test = ml.make_one_hot_encoding(y_test_shuff, 43)
+	y_shuff_onehot_train = ml.make_one_hot_encoding(y_train_shuff, 43)
+
+
+	training_data = ml.expand_x(X_train_shuff)
+	training_labels = y_shuff_onehot_train
+
+
+	test_data = ml.expand_x(X_test_shuff)
+	test_labels = y_shuff_onehot_test
+
+
+	"""Print data stats"""
 	print(X_test_shuff.shape, y_test_shuff.shape)
 	print(X_train_shuff.shape, y_train_shuff.shape)
 	print(type(X_test_shuff), type(y_test_shuff))
 	print(type(X_train_shuff), type(y_train_shuff))
-	y_shuff_onehot_test = ml.make_one_hot_encoding(y_test_shuff, 43)
-	y_shuff_onehot_train = ml.make_one_hot_encoding(y_train_shuff, 43)
+	print(' ')
 	print(y_shuff_onehot_test.shape, y_shuff_onehot_train.shape)
-	training_data = ml.expand_x(X_train_shuff)
-	training_labels = y_shuff_onehot_train
-	test_data = ml.expand_x(X_test_shuff)
-	test_labels = y_shuff_onehot_test
 	print(' ')
 	print('Type of training data = ', type(training_data))
 	print('Type of training labels = ', type(training_labels))
@@ -65,10 +81,12 @@ def main():
 	print('Shape of training data = ', training_data.shape)
 
 
+	#sys.exit()
+
 	# Parameters
 	learning_rate = 0.001
 	batch_size = 128
-	training_epochs = 100
+	training_epochs = 1
 
 	n_input = 1024  # Data input taps. 32 * 32 = 1024
 	n_classes = 43  # Total classes

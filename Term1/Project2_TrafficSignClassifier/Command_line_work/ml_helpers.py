@@ -59,11 +59,11 @@ def expand_x(x):
     shape_x = x.shape
     print('Length is = ', len(shape_x))
     if len(shape_x) == 3:
-        print('Expanding')
+        print('Expanding dataset to [num el, row, col, 1]')
         ret_x = np.empty((shape_x[0],shape_x[1],shape_x[2],1))
         ret_x[:,:,:,0] = x
-        print(ret_x.shape)
-        print('Example value = ', ret_x[0,0,0,0])
+        #print(ret_x.shape)
+        #print('Example value = ', ret_x[0,0,0,0])
     return(ret_x)
 
 """Neural Network helper functions"""
@@ -77,9 +77,9 @@ def conv2d(x, W, b, strides=1):
 	Returns:
 		TBD
 	"""
-    x = tf.nn.conv2d(x, W, strides=[1, strides, strides, 1], padding='SAME')
-    x = tf.nn.bias_add(x, b)
-    return tf.nn.tanh(x)
+	x = tf.nn.conv2d(x, W, strides=[1, strides, strides, 1], padding='SAME')
+	x = tf.nn.bias_add(x, b)
+	return tf.nn.tanh(x)
 
 def maxpool2d(x, k=2):
 	"""
@@ -89,11 +89,11 @@ def maxpool2d(x, k=2):
 	Returns:
 		TBD
 	"""
-    return tf.nn.max_pool(
-        x,
-        ksize=[1, k, k, 1],
-        strides=[1, k, k, 1],
-        padding='SAME')
+	return tf.nn.max_pool(
+	    x,
+	    ksize=[1, k, k, 1],
+	    strides=[1, k, k, 1],
+	    padding='SAME')
 
 # Create model
 def conv_net(x, weights, biases):
@@ -107,28 +107,48 @@ def conv_net(x, weights, biases):
 		out:
 
 	"""
+#0 input 1 or 3 maps of 48x48 neurons
+#1 convolutional 100 maps of 46x46 neurons 3x3
+#2 max pooling 100 maps of 23x23 neurons 2x2
+#3 convolutional 150 maps of 20x20 neurons 4x4
+#4 max pooling 150 maps of 10x10 neurons 2x2
+#5 convolutional 250 maps of 8x8 neurons 3x3
+#6 max pooling 250 maps of 4x4 neurons 2x2
+#7 fully connected 200 neurons
+#8 fully connected 43 neurons
+
+
+
+#1 convolutional 100 maps of 46x46 neurons 3x3
+#2 max pooling 100 maps of 23x23 neurons 2x2
     # Layer 1
-    conv1 = conv2d(x, weights['layer_1'], biases['layer_1'])
-    conv1 = maxpool2d(conv1)
+	conv1 = conv2d(x, weights['layer_1'], biases['layer_1'])
+	conv1 = maxpool2d(conv1)
 
+#3 convolutional 150 maps of 20x20 neurons 4x4
+#4 max pooling 150 maps of 10x10 neurons 2x2
     # Layer 2
-    conv2 = conv2d(conv1, weights['layer_2'], biases['layer_2'])
-    conv2 = maxpool2d(conv2)
+	conv2 = conv2d(conv1, weights['layer_2'], biases['layer_2'])
+	conv2 = maxpool2d(conv2)
 
+#5 convolutional 250 maps of 8x8 neurons 3x3
+#6 max pooling 250 maps of 4x4 neurons 2x2
     # Layer 3
-    conv3 = conv2d(conv2, weights['layer_3'], biases['layer_3'])
-    conv3 = maxpool2d(conv2)
+	conv3 = conv2d(conv2, weights['layer_3'], biases['layer_3'])
+	conv3 = maxpool2d(conv2)
 
+#7 fully connected 200 neurons
+#8 fully connected 43 neurons
     # Fully connected layer
     # Reshape conv3 output to fit fully connected layer input
-    fc1 = tf.reshape(
+	fc1 = tf.reshape(
         conv3,
         [-1, weights['fully_connected'].get_shape().as_list()[0]])
-    fc1 = tf.add(
+	fc1 = tf.add(
         tf.matmul(fc1, weights['fully_connected']),
         biases['fully_connected'])
-    fc1 = tf.nn.tanh(fc1)
+	fc1 = tf.nn.tanh(fc1)
 
     # Output Layer - class prediction
-    out = tf.add(tf.matmul(fc1, weights['out']), biases['out'])
-    return out
+	out = tf.add(tf.matmul(fc1, weights['out']), biases['out'])
+	return out

@@ -12,6 +12,7 @@ import random
 import pickle
 import time
 import tensorflow as tf
+import sys
 
 import ml_helpers as ml
 import pre_proc_helpers as proc
@@ -43,19 +44,36 @@ def main():
 	"""Format training and test data"""
 	X_test_gray = proc.make_grayscale(X_test)
 	X_train_gray = proc.make_grayscale(X_train)
-	[X_test_shuff, y_test_shuff] = ml.randomize_set(X_test_gray, y_test)
-	[X_train_shuff, y_train_shuff] = ml.randomize_set(X_train_gray, y_train)
+
+
+
+
+	#[X_test_shuff, y_test_shuff] = ml.randomize_set(X_test_gray, y_test)
+	#[X_train_shuff, y_train_shuff] = ml.randomize_set(X_train_gray, y_train)
+	[X_test_shuff, y_test_shuff] = ml.randomize_set(X_test_preproc, y_test)
+	[X_train_shuff, y_train_shuff] = ml.randomize_set(X_train_preproc, y_train)
+
+
+
+	y_shuff_onehot_test = ml.make_one_hot_encoding(y_test_shuff, 43)
+	y_shuff_onehot_train = ml.make_one_hot_encoding(y_train_shuff, 43)
+
+
+	training_data = ml.expand_x(X_train_shuff)
+	training_labels = y_shuff_onehot_train
+
+
+	test_data = ml.expand_x(X_test_shuff)
+	test_labels = y_shuff_onehot_test
+
+
+	"""Print data stats"""
 	print(X_test_shuff.shape, y_test_shuff.shape)
 	print(X_train_shuff.shape, y_train_shuff.shape)
 	print(type(X_test_shuff), type(y_test_shuff))
 	print(type(X_train_shuff), type(y_train_shuff))
-	y_shuff_onehot_test = ml.make_one_hot_encoding(y_test_shuff, 43)
-	y_shuff_onehot_train = ml.make_one_hot_encoding(y_train_shuff, 43)
+	print(' ')
 	print(y_shuff_onehot_test.shape, y_shuff_onehot_train.shape)
-	training_data = ml.expand_x(X_train_shuff)
-	training_labels = y_shuff_onehot_train
-	test_data = ml.expand_x(X_test_shuff)
-	test_labels = y_shuff_onehot_test
 	print(' ')
 	print('Type of training data = ', type(training_data))
 	print('Type of training labels = ', type(training_labels))
@@ -63,10 +81,12 @@ def main():
 	print('Shape of training data = ', training_data.shape)
 
 
+	#sys.exit()
+
 	# Parameters
 	learning_rate = 0.001
 	batch_size = 128
-	training_epochs = 100
+	training_epochs = 1
 
 	n_input = 1024  # Data input taps. 32 * 32 = 1024
 	n_classes = 43  # Total classes
@@ -86,19 +106,46 @@ def main():
 	test_data = ml.expand_x(X_test_shuff)
 	test_labels = y_shuff_onehot_test
 
+
+#0 input 1 or 3 maps of 48x48 neurons
+#1 convolutional 100 maps of 46x46 neurons 3x3
+#2 max pooling 100 maps of 23x23 neurons 2x2
+
+#3 convolutional 150 maps of 20x20 neurons 4x4
+#4 max pooling 150 maps of 10x10 neurons 2x2
+
+#5 convolutional 250 maps of 8x8 neurons 3x3
+#6 max pooling 250 maps of 4x4 neurons 2x2
+#7 fully connected 200 neurons
+#8 fully connected 43 neurons
+
 	# Store layers weight & bias
 	weights = {
 		'layer_1': tf.Variable(tf.truncated_normal(
-			[5, 5, 1, layer_width['layer_1']])),
+			[3, 3, 1, layer_width['layer_1']])),
 		'layer_2': tf.Variable(tf.truncated_normal(
-			[5, 5, layer_width['layer_1'], layer_width['layer_2']])),
+			[4, 4, layer_width['layer_1'], layer_width['layer_2']])),
 		'layer_3': tf.Variable(tf.truncated_normal(
-			[5, 5, layer_width['layer_2'], layer_width['layer_3']])),
+			[3, 3, layer_width['layer_2'], layer_width['layer_3']])),
 		'fully_connected': tf.Variable(tf.truncated_normal(
 			[1024, layer_width['fully_connected']])),
 		'out': tf.Variable(tf.truncated_normal(
 			[layer_width['fully_connected'], n_classes]))
 	}
+
+
+# 	weights = {
+# 		'layer_1': tf.Variable(tf.truncated_normal(
+# 			[5, 5, 1, layer_width['layer_1']])),
+# 		'layer_2': tf.Variable(tf.truncated_normal(
+# 			[5, 5, layer_width['layer_1'], layer_width['layer_2']])),
+# 		'layer_3': tf.Variable(tf.truncated_normal(
+# 			[5, 5, layer_width['layer_2'], layer_width['layer_3']])),
+# 		'fully_connected': tf.Variable(tf.truncated_normal(
+# 			[1024, layer_width['fully_connected']])),
+# 		'out': tf.Variable(tf.truncated_normal(
+# 			[layer_width['fully_connected'], n_classes]))
+# 	}
 
 	biases = {
 		'layer_1': tf.Variable(tf.zeros(layer_width['layer_1'])),

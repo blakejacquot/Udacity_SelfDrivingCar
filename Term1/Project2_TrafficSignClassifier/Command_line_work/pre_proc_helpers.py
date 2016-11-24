@@ -46,7 +46,12 @@ def normalize(x):
     for i in range(num_el):
         curr_im = x[i][:][:][:]
         empty_im = np.ones((x_shape[1],x_shape[2]))
-        ret_images[i][:][:] = cv2.normalize(curr_im, empty_im, 0,255,cv2.NORM_MINMAX)
+        #print('Normalizing image')
+        #print(np.ndarray.max(curr_im), np.ndarray.min(curr_im))
+        #proc_im = cv2.normalize(curr_im, empty_im, 0,255,cv2.NORM_MINMAX)
+        proc_im = cv2.normalize(curr_im, empty_im, -127,128,cv2.NORM_MINMAX)
+        #print(np.ndarray.max(proc_im), np.ndarray.min(proc_im))
+        ret_images[i][:][:] = proc_im
     return ret_images
 
 
