@@ -30,7 +30,7 @@ def main():
 	save_stats_to_file = 1
 	load_stats_from_file = 1
 	report_stats_from_file = 1
-	initialize_stat_file = 1
+	initialize_stat_file = 0
 
 	with open(training_file, mode='rb') as f:
 		train = pickle.load(f)
