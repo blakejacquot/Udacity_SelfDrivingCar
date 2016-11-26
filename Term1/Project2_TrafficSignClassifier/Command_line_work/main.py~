@@ -26,7 +26,11 @@ def main():
 	#checkpoint_file = 'model-checkpoint'
 	#checkpoint_file_path = os.path.join(checkpoint_path, checkpoint_file)
 	restore_model_for_continued_work = 1
-	train_model = 0
+	train_model = 1
+	save_stats_to_file = 1
+	load_stats_from_file = 1
+	report_stats_from_file = 1
+	initialize_stat_file = 1
 
 	with open(training_file, mode='rb') as f:
 		train = pickle.load(f)
@@ -158,32 +162,42 @@ def main():
 	init = tf.initialize_all_variables()
 	saver = tf.train.Saver() # Object to save and restore variables.
 
+	time_per_training_epoch = []
+	training_accuracy = []
+	cost_list = []
+
+	if initialize_stat_file == 1:
+		print('Saving stats to file')
+		data_to_save = {'time_per_training_epoch': time_per_training_epoch, 'training_accuracy': training_accuracy, 'cost_list': cost_list}
+		pickle.dump(data_to_save, open( "save.p", "wb" ))
+
+	if load_stats_from_file == 1:
+		print('Loading stats from file')
+		data_to_save = pickle.load(open( "save.p", "rb" ))
+		time_per_training_epoch = data_to_save['time_per_training_epoch']
+		training_accuracy = data_to_save['training_accuracy']
+		cost_list = data_to_save['cost_list']
+
 	# Launch the graph
 	with tf.Session() as sess:
 		sess.run(init)
-		#ckpt = tf.train.get_checkpoint_state(checkpoint_path, checkpoint_file)
-		#print('ckpt = ', ckpt)
-		#if ckpt and ckpt.model_checkpoint_path:
-		#	print('ckpt.model_checkpoint_path', ckpt.model_checkpoint_path)
-		#	print('Restoring checkpoing')
-		#	saver.restore(sess, ckpt.model_checkpoint_path)
-		#
-		#
-		#else:
-		#    print('No checkpoint found')
 
+		"""Restore saved model for continued work"""
 		if restore_model_for_continued_work == 1:
 			print('Restoring model')
+			start_time_restore = time.time()
 			saver = tf.train.import_meta_graph('model-checkpoint.meta')
 			saver.restore(sess, 'model-checkpoint')
 			all_vars = tf.trainable_variables()
-
+			elapsed_time = time.time() - start_time_restore
+			print('Time to restore model (sec) = ', int(elapsed_time))
 
 		"""Train model"""
 		if train_model == 1:
+			print('Training model')
 			for epoch in range(training_epochs):
 				print('Starting epoch = ', epoch)
-				start_time = time.time()
+				start_time_train = time.time()
 				total_batch = int(total_samples/batch_size)
 
 				# Loop over all batches
@@ -198,21 +212,123 @@ def main():
 				# Display logs per epoch step
 				c = sess.run(cost, feed_dict={x: batch_x, y: batch_y})
 
+
+				print(type(c))
+
+
+				cost_list.append(c)
+
 				# Save model checkpoint
 				print('Saving session')
 				saver.save(sess, 'model-checkpoint')
 
 				# Print info about the epoch
-				elapsed_time = time.time() - start_time
+				elapsed_time = time.time() - start_time_train
 				print('Time to process epoch (sec) = ', int(elapsed_time))
+				time_per_training_epoch.append(int(elapsed_time))
 				print(' ')
 				print("Epoch:", '%04d' % (epoch+1), "cost=", "{:.9f}".format(c))
+
+				"""Test model and report accuracy"""
+				print('Calculating Accuracy')
+				start_time_test_report = time.time()
+				correct_prediction = tf.equal(tf.argmax(logits, 1), tf.argmax(y, 1))
+				accuracy = tf.reduce_mean(tf.cast(correct_prediction, "float"))
+				accuracy_val = accuracy.eval({x: test_data, y: test_labels})
+				print("Accuracy:", accuracy_val)
+
+				elapsed_time = time.time() - start_time_test_report
+				training_accuracy.append(accuracy_val)
+				print('Time to test and report accuracy (sec) = ', int(elapsed_time))
+
+				if save_stats_to_file == 1:
+					print('Saving stats to file')
+					data_to_save = {'time_per_training_epoch': time_per_training_epoch, 'training_accuracy': training_accuracy, 'cost_list': cost_list}
+					pickle.dump(data_to_save, open( "save.p", "wb" ))
+
+				if report_stats_from_file == 1:
+					print('Reporting from file to make plot')
+					data_to_save = pickle.load( open( "save.p", "rb" ) )
+					time_per_training_epoch = data_to_save['time_per_training_epoch']
+					training_accuracy = data_to_save['training_accuracy']
+
+					"""Plot and save fig for time per training epoch"""
+					fig_savename = 'time_per_training_epoch.png'
+					fig = plt.figure()
+					curr_plot1 = plt.plot(range(len(time_per_training_epoch)), time_per_training_epoch, color = 'b')
+					plt.ylabel('Time per training epoch (sec)')
+					plt.title('Training time per epoch', fontsize = 10)
+					curr_dir = os.getcwd()
+					fig.savefig(fig_savename)
+					fig.clf()
+
+					"""Plot cost"""
+					fig_savename = 'cost.png'
+					fig = plt.figure()
+					curr_plot1 = plt.plot(range(len(cost_list)), cost_list, color = 'b')
+					plt.ylabel('Cost')
+					plt.title('Cost', fontsize = 10)
+					curr_dir = os.getcwd()
+					fig.savefig(fig_savename)
+					fig.clf()
+
+					"""Plot and save fig for model accuracy"""
+					fig_savename = 'training_accuracy.png'
+					fig = plt.figure()
+					curr_plot1 = plt.plot(range(len(training_accuracy)), training_accuracy, color = 'b')
+					plt.ylabel('Training accuracy')
+					plt.title('Training accuracy', fontsize = 10)
+					curr_dir = os.getcwd()
+					fig.savefig(fig_savename)
+					fig.clf()
+
+
+					print('Done reporting stats')
+
 			print("Optimization Finished!")
 
-		"""Test model and report accuracy"""
-		correct_prediction = tf.equal(tf.argmax(logits, 1), tf.argmax(y, 1))
-		accuracy = tf.reduce_mean(tf.cast(correct_prediction, "float"))
-		print("Accuracy:", ccuracy.eval({x: test_data, y: test_labels}))
+# 		"""Test model and report accuracy"""
+# 		print('Calculating Accuracy')
+# 		start_time_test_report = time.time()
+# 		correct_prediction = tf.equal(tf.argmax(logits, 1), tf.argmax(y, 1))
+# 		accuracy = tf.reduce_mean(tf.cast(correct_prediction, "float"))
+# 		accuracy_val = accuracy.eval({x: test_data, y: test_labels})
+# 		print("Accuracy:", accuracy_val)
+#
+# 		elapsed_time = time.time() - start_time_test_report
+# 		training_accuracy.append(int(elapsed_time))
+# 		print('Time to test and report accuracy (sec) = ', int(elapsed_time))
+#
+# 		if save_stats_to_file == 1:
+# 			print('Saving stats to file')
+# 			data_to_save = {'time_per_training_epoch': time_per_training_epoch, 'training_accuracy': training_accuracy}
+# 			pickle.dump(data_to_save, open( "save.p", "wb" ))
+#
+# 		if report_stats_from_file == 1:
+# 			print('Reporting from file to make plot')
+# 			data_to_save = pickle.load( open( "save.p", "rb" ) )
+# 			time_per_training_epoch = data_to_save['time_per_training_epoch']
+# 			training_accuracy = data_to_save['training_accuracy']
+#
+# 			"""Plot and save fig for time per training epoch"""
+# 			fig_savename = 'time_per_training_epoch.png'
+# 			fig = plt.figure()
+# 			curr_plot1 = plt.plot(range(len(time_per_training_epoch)), time_per_training_epoch, color = 'b')
+# 			plt.ylabel('Time per training epoch (sec)')
+# 			plt.title('Training time per epoch', fontsize = 10)
+# 			curr_dir = os.getcwd()
+# 			fig.savefig(fig_savename)
+#
+# 			"""Plot and save fig for model accuracy"""
+# 			fig_savename = 'training_accuracy.png'
+# 			fig = plt.figure()
+# 			curr_plot1 = plt.plot(range(len(training_accuracy)), training_accuracy, color = 'b')
+# 			plt.ylabel('Time per training epoch (sec)')
+# 			plt.title('Training time per epoch', fontsize = 10)
+# 			curr_dir = os.getcwd()
+# 			fig.savefig(fig_savename)
+#
+# 			print('Done reporting stats')
 
 if __name__ == "__main__":
     main()
