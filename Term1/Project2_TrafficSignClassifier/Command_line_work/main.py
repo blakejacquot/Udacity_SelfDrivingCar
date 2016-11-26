@@ -13,6 +13,7 @@ import pickle
 import time
 import tensorflow as tf
 import sys
+import os
 
 import ml_helpers as ml
 import pre_proc_helpers as proc
@@ -21,6 +22,11 @@ def main():
 	# TODO: fill this in based on where you saved the training and testing data
 	training_file = '/Users/blakejacquot/Dropbox/MOOCs/Udacity_SelfDrivingCar/Term1/TrafficSignClassifier/traffic-signs-data/train.p'
 	testing_file = '/Users/blakejacquot/Dropbox/MOOCs/Udacity_SelfDrivingCar/Term1/TrafficSignClassifier/traffic-signs-data/test.p'
+	#checkpoint_path = '/Users/blakejacquot/Desktop/temp2/Udacity_SelfDrivingCar/Term1/Project2_TrafficSignClassifier/Command_line_work/'
+	#checkpoint_file = 'model-checkpoint'
+	#checkpoint_file_path = os.path.join(checkpoint_path, checkpoint_file)
+	restore_model_for_continued_work = 1
+	train_model = 0
 
 	with open(training_file, mode='rb') as f:
 		train = pickle.load(f)
@@ -47,25 +53,21 @@ def main():
 
 
 
-
-	#[X_test_shuff, y_test_shuff] = ml.randomize_set(X_test_gray, y_test)
-	#[X_train_shuff, y_train_shuff] = ml.randomize_set(X_train_gray, y_train)
+	"""Randomize the data"""
 	[X_test_shuff, y_test_shuff] = ml.randomize_set(X_test_preproc, y_test)
 	[X_train_shuff, y_train_shuff] = ml.randomize_set(X_train_preproc, y_train)
 
 
-
+	"""One-hot encode the data"""
 	y_shuff_onehot_test = ml.make_one_hot_encoding(y_test_shuff, 43)
 	y_shuff_onehot_train = ml.make_one_hot_encoding(y_train_shuff, 43)
 
-
+	"""Expand data dimensions and set up labels"""
 	training_data = ml.expand_x(X_train_shuff)
 	training_labels = y_shuff_onehot_train
-
-
+	total_samples = len(training_labels)
 	test_data = ml.expand_x(X_test_shuff)
 	test_labels = y_shuff_onehot_test
-
 
 	"""Print data stats"""
 	print(X_test_shuff.shape, y_test_shuff.shape)
@@ -80,32 +82,18 @@ def main():
 	print('Shape of training labels = ', training_labels.shape)
 	print('Shape of training data = ', training_data.shape)
 
-
-	#sys.exit()
-
-	# Parameters
+	"""Set model parameters"""
 	learning_rate = 0.001
 	batch_size = 128
-	training_epochs = 1
-
+	training_epochs = 200
 	n_input = 1024  # Data input taps. 32 * 32 = 1024
 	n_classes = 43  # Total classes
-
 	layer_width = {
 		'layer_1': 32,
 		'layer_2': 64,
 		'layer_3': 128,
 		'fully_connected': 512
 	}
-
-	# Set up data
-	training_data = ml.expand_x(X_train_shuff)
-	training_labels = y_shuff_onehot_train
-	total_samples = len(training_labels)
-
-	test_data = ml.expand_x(X_test_shuff)
-	test_labels = y_shuff_onehot_test
-
 
 #0 input 1 or 3 maps of 48x48 neurons
 #1 convolutional 100 maps of 46x46 neurons 3x3
@@ -166,55 +154,56 @@ def main():
 	optimizer = tf.train.GradientDescentOptimizer(learning_rate=learning_rate)\
 		.minimize(cost)
 
-
 	# Initializing the variables
 	init = tf.initialize_all_variables()
+	saver = tf.train.Saver() # Object to save and restore variables.
 
 	# Launch the graph
 	with tf.Session() as sess:
 		sess.run(init)
 
-		# Training cycle
-		print('Starting first epoch')
-		for epoch in range(training_epochs):
-			start_time = time.time()
-			total_batch = int(total_samples/batch_size)
+		"""Restore saved model for continued work"""
+		if restore_model_for_continued_work == 1:
+			print('Restoring model')
+			saver = tf.train.import_meta_graph('model-checkpoint.meta')
+			saver.restore(sess, 'model-checkpoint')
+			all_vars = tf.trainable_variables()
 
-			# Loop over all batches
-			for i in range(total_batch):
-				batch_x = training_data[i*batch_size:i*batch_size+batch_size,:,:]
-				batch_y = training_labels[i*batch_size:i*batch_size+batch_size]
 
-				# Run optimization op (backprop) and cost op (to get loss value)
-				sess.run(optimizer, feed_dict={x: batch_x, y: batch_y})
+		"""Train model"""
+		if train_model == 1:
+			for epoch in range(training_epochs):
+				print('Starting epoch = ', epoch)
+				start_time = time.time()
+				total_batch = int(total_samples/batch_size)
 
-			# Display logs per epoch step
-			c = sess.run(cost, feed_dict={x: batch_x, y: batch_y})
-			print("Epoch:", '%04d' % (epoch+1), "cost=", "{:.9f}".format(c))
-			elapsed_time = time.time() - start_time
-			print('Time for last epoch (sec) = ', int(elapsed_time))
-		print("Optimization Finished!")
+				# Loop over all batches
+				print('Processing batches. Not yet saving.')
+				for i in range(total_batch):
+					batch_x = training_data[i*batch_size:i*batch_size+batch_size,:,:]
+					batch_y = training_labels[i*batch_size:i*batch_size+batch_size]
 
-		# Test model
+					# Run optimization op (backprop) and cost op (to get loss value)
+					sess.run(optimizer, feed_dict={x: batch_x, y: batch_y})
+
+				# Display logs per epoch step
+				c = sess.run(cost, feed_dict={x: batch_x, y: batch_y})
+
+				# Save model checkpoint
+				print('Saving session')
+				saver.save(sess, 'model-checkpoint')
+
+				# Print info about the epoch
+				elapsed_time = time.time() - start_time
+				print('Time to process epoch (sec) = ', int(elapsed_time))
+				print(' ')
+				print("Epoch:", '%04d' % (epoch+1), "cost=", "{:.9f}".format(c))
+			print("Optimization Finished!")
+
+		"""Test model and report accuracy"""
 		correct_prediction = tf.equal(tf.argmax(logits, 1), tf.argmax(y, 1))
-
-		# Calculate accuracy
 		accuracy = tf.reduce_mean(tf.cast(correct_prediction, "float"))
-		print(
-			"Accuracy:",
-			accuracy.eval({x: test_data, y: test_labels}))
-
-
-
-
-
-
-
-
-
-
-
-
+		print("Accuracy:", ccuracy.eval({x: test_data, y: test_labels}))
 
 if __name__ == "__main__":
     main()
