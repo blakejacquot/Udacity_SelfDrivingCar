@@ -1,3 +1,5 @@
+
+
 import jupyter
 import numpy as np
 import cv2
@@ -58,7 +60,6 @@ def main():
 	"""Randomize the data"""
 	[X_test_shuff, y_test_shuff] = ml.randomize_set(X_test_preproc, y_test)
 	[X_train_shuff, y_train_shuff] = ml.randomize_set(X_train_preproc, y_train)
-
 
 	"""One-hot encode the data"""
 	y_shuff_onehot_test = ml.make_one_hot_encoding(y_test_shuff, 43)

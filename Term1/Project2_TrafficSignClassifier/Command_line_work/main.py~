@@ -51,11 +51,9 @@ def main():
 	X_train_preproc = proc.make_gaussian_blur(X_train_preproc, 1)
 	X_train_preproc = proc.normalize(X_train_preproc)
 
-	"""Format training and test data"""
-	X_test_gray = proc.make_grayscale(X_test)
-	X_train_gray = proc.make_grayscale(X_train)
-
-
+	#"""Format training and test data"""
+	#X_test_gray = proc.make_grayscale(X_test)
+	#X_train_gray = proc.make_grayscale(X_train)
 
 	"""Randomize the data"""
 	[X_test_shuff, y_test_shuff] = ml.randomize_set(X_test_preproc, y_test)
