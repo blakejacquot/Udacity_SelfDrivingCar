@@ -12,4 +12,11 @@ Collection of training data is organized into IMG folder (containing all images)
 driving_log.csv.
 
 ## Modules
+### preprocess.py
+Preprocesses image and csv data for use in training.
+
+### train.py
+Use preprocessed image and csv data to train a model
+
+### drive.py
 TBD
