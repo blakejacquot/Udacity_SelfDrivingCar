@@ -35,7 +35,17 @@ def grayscale(image):
     """
     Takes (x,y,3) numpy array and returns (x,y)
     """
-    pass
+    shape_image = image.shape
+    print(shape_image)
+    ret_image = np.zeros((shape_image[0], shape_image[1]))
+    print(ret_image.shape)
+    im1 = image[:,:,0]
+    im2 = image[:,:,1]
+    im3 = image[:,:,2]
+    gray_im = im1/3.0 + im2/3.0 + im3/3.0
+    print(gray_im.shape, ret_image.shape)
+    ret_image[:,:] = gray_im
+    return(ret_image)
 
 def trim_image(image):
     trimmed_image = image[60:-20,:,:] # Values chosen empirically. Trims out non-road data
@@ -61,7 +71,14 @@ def show_trim_results(cen, lef, rig, cen_trim, lef_trim, rig_trim):
     plt.subplot(236)
     plt.imshow(rig_trim)
     plt.title('Right post-trim')
+    plt.show()
 
+def normalize_image(image):
+    max = np.max(image)
+    min = np.min(image)
+    shape_image = image.shape
+    ret_image = image / 255 - 0.5
+    return ret_image
 
 if __name__ == '__main__':
     # User-defined variables
@@ -94,8 +111,13 @@ if __name__ == '__main__':
     lef_trim = trim_image(lef)
     rig_trim = trim_image(rig)
 
+    #show_trim_results(cen, lef, rig, cen_trim, lef_trim, rig_trim)
 
-    show_trim_results(cen, lef, rig, cen_trim, lef_trim, rig_trim)
-
+    gray_im = grayscale(cen_trim)
+    print(gray_im.shape)
+    plt.figure()
+    plt.imshow(gray_im, cmap='gray')
     plt.show()
 
+    norm_im = normalize_image(gray_im)
+    norm_im = norm_im.astype('float32')
