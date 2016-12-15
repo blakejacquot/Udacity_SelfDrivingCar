@@ -47,7 +47,7 @@ def telemetry(sid, data):
     transformed_image_array = image_array[None, :, :, :]
     single_im = transformed_image_array[0,:,:,:]
 
-    """Preprocess the image before using it to get steering angle"""
+    """Preprocess the image before using it"""
     start_row = 60 # for trimming images
     stop_row = 140 # for trimming images
     cen_proc = preprocess.trim_image(single_im, start_row, stop_row)

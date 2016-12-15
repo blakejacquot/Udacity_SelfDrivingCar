@@ -15,7 +15,7 @@ import csv
 import matplotlib.pyplot as plt
 import numpy as np
 import os
-import PIL
+import pickle
 
 def import_csv_data(cvs_path):
     print('Importing CSV data')
@@ -35,20 +35,20 @@ def grayscale(image):
     """
     Takes (x,y,3) numpy array and returns (x,y)
     """
+    print('Making grayscale image')
     shape_image = image.shape
-    print(shape_image)
-    ret_image = np.zeros((shape_image[0], shape_image[1]))
-    print(ret_image.shape)
+    print('Initial image shape = ', image.shape)
+    ret_image = np.zeros((shape_image[0], shape_image[1]), dtype=np.float32)
     im1 = image[:,:,0]
     im2 = image[:,:,1]
     im3 = image[:,:,2]
     gray_im = im1/3.0 + im2/3.0 + im3/3.0
-    print(gray_im.shape, ret_image.shape)
     ret_image[:,:] = gray_im
+    print('Final image shape = ', ret_image.shape)
     return(ret_image)
 
-def trim_image(image):
-    trimmed_image = image[60:-20,:,:] # Values chosen empirically. Trims out non-road data
+def trim_image(image, start_row, stop_row):
+    trimmed_image = image[start_row:stop_row,:,:] # Values chosen empirically. Trims out non-road data
     return trimmed_image
 
 def show_trim_results(cen, lef, rig, cen_trim, lef_trim, rig_trim):
@@ -73,51 +73,146 @@ def show_trim_results(cen, lef, rig, cen_trim, lef_trim, rig_trim):
     plt.title('Right post-trim')
     plt.show()
 
+def show_grayscale(im):
+    plt.figure()
+    plt.imshow(im, cmap='gray')
+    plt.show()
+
 def normalize_image(image):
+    print('Normalizing image')
     max = np.max(image)
     min = np.min(image)
     shape_image = image.shape
     ret_image = image / 255 - 0.5
     return ret_image
 
+def combine_im(lef_proc, cen_proc, rig_proc):
+    shape_im = lef_proc.shape
+    ret_im = np.zeros((shape_im[0], shape_im[1], 3), dtype=np.float32)
+    ret_im[:,:,0] = lef_proc
+    ret_im[:,:,1] = cen_proc
+    ret_im[:,:,2] = rig_proc
+    return ret_im
+
+def write_pickle_file(filename, y, X):
+    print('Saving to pickle file')
+    data_to_save = {'y': y,
+                    'X': X,
+                    }
+    pickle.dump(data_to_save, open(filename, "wb" ))
+
+def examine_data(index, y, X):
+    print('Label = ', y[index], type(y[index]))
+    print(np.max(X), np.min(X))
+    image = X[index,:,:,:]
+    print('Shape of image = ', image.shape)
+    print(np.min(image), np.max(image))
+    lef = image[:,:,0]
+    cen = image[:,:,1]
+    rig = image[:,:,2]
+    print(lef.shape, cen.shape, rig.shape)
+    min = np.min(lef)
+    max = np.max(lef)
+    print(min, max)
+    plt.figure
+    plt.subplot(131)
+    plt.imshow(lef, cmap='gray')
+    plt.title('Left')
+    plt.subplot(132)
+    plt.imshow(cen, cmap='gray')
+    plt.title('Center')
+    plt.subplot(133)
+    plt.imshow(rig, cmap='gray')
+    plt.title('Right')
+    plt.show()
+
+def load_pickle(file):
+    print('Loading stats from file')
+    data = pickle.load(open(file, "rb" ))
+    y = data['y']
+    X = data['X']
+    return y, X
+
 if __name__ == '__main__':
     # User-defined variables
     data_path_root = '/Users/blakejacquot/Desktop/temp2/DrivingSimulator/'
-
+    start_row = 60 # for trimming images
+    stop_row = 140 # for trimming images
+    pickle_filename = '/Users/blakejacquot/Desktop/temp2/proc_data.p'
     csv_path = os.path.join(data_path_root, 'driving_log.csv')
     csv_data = import_csv_data(csv_path)
     num_el = len(csv_data)
     print('Number of entries in csv file: %d' %num_el)
-    line = csv_data[3000]
+
+    # Make placeholder variables
+    steer_ang_np = np.zeros(num_el, dtype=np.float32)
+    #images = np.zeros((num_el, stop_row-start_row, 320, 3), dtype=np.float32)
+    images = np.zeros((num_el, stop_row-start_row, 320, 1), dtype=np.float32)
 
 
-    center_image_path = line[0]
-    left_image_path = line[1]
-    right_image_path = line[2]
-    steering_angle = line[3]
-    throttle = line[4]
-    break_val = line[5]
-    speed = line[6]
+    for i in range(num_el):
+        print(i, ' of ', num_el)
 
-    cen = load_image(center_image_path)
-    lef = load_image(left_image_path)
-    rig = load_image(right_image_path)
+        line = csv_data[i]
 
-    print(cen.shape)
-    print(lef.shape)
-    print(rig.shape)
+        # Get image paths and CSV values
+        center_image_path = line[0]
+        left_image_path = line[1]
+        right_image_path = line[2]
+        steering_angle = line[3]
+        throttle = line[4]
+        break_val = line[5]
+        speed = line[6]
 
-    cen_trim = trim_image(cen)
-    lef_trim = trim_image(lef)
-    rig_trim = trim_image(rig)
+        # Set up labels
+        steer_ang_float = float(steering_angle)
+        steer_ang_np[i] = float(steering_angle)
 
-    #show_trim_results(cen, lef, rig, cen_trim, lef_trim, rig_trim)
+        # Load images
+        cen = load_image(center_image_path)
+        #lef = load_image(left_image_path)
+        #rig = load_image(right_image_path)
 
-    gray_im = grayscale(cen_trim)
-    print(gray_im.shape)
-    plt.figure()
-    plt.imshow(gray_im, cmap='gray')
-    plt.show()
+        # Trim images to only essential parts
+        cen_proc = trim_image(cen, start_row, stop_row)
+        #lef_proc = trim_image(lef, start_row, stop_row)
+        #rig_proc = trim_image(rig, start_row, stop_row)
+        #show_trim_results(cen, lef, rig, cen_proc, lef_proc, rig_proc)
 
-    norm_im = normalize_image(gray_im)
-    norm_im = norm_im.astype('float32')
+        # Grayscale the image
+        cen_proc = grayscale(cen_proc)
+        #lef_proc = grayscale(lef_proc)
+        #rig_proc = grayscale(rig_proc)
+        #show_grayscale(cen_proc)
+
+        # Normalize the image
+        cen_proc = normalize_image(cen_proc)
+        #lef_proc = normalize_image(lef_proc)
+        #rig_proc = normalize_image(rig_proc)
+
+        # Ensure data is float32 (Tensorflow expects this)
+        cen_proc = cen_proc.astype('float32')
+        #lef_proc = lef_proc.astype('float32')
+        #rig_proc = rig_proc.astype('float32')
+        steer_ang_np = steer_ang_np.astype('float32')
+
+        # Combine images together
+        #final_im = combine_im(lef_proc, cen_proc, rig_proc)
+        #final_im = combine_im(cen_proc)
+        final_im = cen_proc
+
+
+        images[i,:,:,0] = final_im
+        images = images.astype('float32')
+
+    #examine_data(0, steer_ang_np, images)
+    write_pickle_file(pickle_filename, steer_ang_np, images)
+    #y, X = load_pickle(pickle_filename)
+    #examine_data(0, y, X)
+
+
+
+
+
+
+
