@@ -4,7 +4,18 @@ import pickle
 
 from sklearn.model_selection import train_test_split
 
+def write_pickle_file(filename, y, X):
+    """ Write X, y (Image, label) data to pickle file.
+    """
+    print('Saving to pickle file')
+    data_to_save = {'y': y,
+                    'X': X,
+                    }
+    pickle.dump(data_to_save, open(filename, "wb" ))
+
 def load_pickle(file):
+    """ Read X, y (Image, label) data to pickle file.
+    """
     print('Loading stats from file')
     data = pickle.load(open(file, "rb" ))
     y = data['y']
@@ -12,6 +23,8 @@ def load_pickle(file):
     return y, X
 
 def examine_data(index, y, X):
+    """ Display details of chosen label and image data
+    """
     print('Label = ', y[index], type(y[index]))
     print(np.max(X), np.min(X))
     image = X[index,:,:,:]
@@ -38,12 +51,6 @@ def examine_data(index, y, X):
     plt.title('Right')
     plt.show()
 
-def write_pickle_file(filename, y, X):
-    print('Saving to pickle file')
-    data_to_save = {'y': y,
-                    'X': X,
-                    }
-    pickle.dump(data_to_save, open(filename, "wb" ))
 
 if __name__ == '__main__':
 
