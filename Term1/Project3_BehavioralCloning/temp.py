@@ -17,6 +17,8 @@ import numpy as np
 import os
 import pickle
 import sys
+from sklearn.model_selection import train_test_split
+
 
 def import_csv_data(cvs_path):
     print('Importing CSV data')
@@ -148,83 +150,45 @@ def examine_data(index, y, X):
 
 if __name__ == '__main__':
     # User-defined variables
-    data_path_root = '/Users/blakejacquot/Desktop/temp2/DrivingSimulator/Data_from_Udacity/'
-    start_row = 60 # for trimming images
-    stop_row = 140 # for trimming images
-    pickle_filename = '/Users/blakejacquot/Desktop/temp2/proc_data.p'
-    csv_path = os.path.join(data_path_root, 'driving_log.csv')
-    csv_data = import_csv_data(csv_path)
-    num_el = len(csv_data)
-    print('Number of entries in csv file: %d' %num_el)
-
-    # Make placeholder variables
-    steer_ang_np = np.zeros(num_el, dtype=np.float32)
-    images = np.zeros((num_el, stop_row-start_row, 320, 1), dtype=np.float32)
+    #data_path_root = '/Users/blakejacquot/Desktop/temp2/DrivingSimulator/Data_from_Udacity/'
+    #data_path_root = '/Users/blakejacquot/Desktop/temp2/DrivingSimulator/BCJ_dataset1/'
+    data_path_root = '/Users/blakejacquot/Desktop/temp2/DrivingSimulator/BCJ_dataset2/'
+    data_path_root = '/Users/blakejacquot/Desktop/temp2/DrivingSimulator/BCJ_dataset3/'
 
 
-    for i in range(1,num_el):
-        print('Processing ', i, ' of ', num_el)
+    """Do train-test-split"""
+    pickle_path = os.path.join(data_path_root, 'proc_data.p')
+    train_path = os.path.join(data_path_root, 'data_train.p')
+    test_path = os.path.join(data_path_root, 'data_test.p')
+    val_path = os.path.join(data_path_root, 'data_val.p')
+    y, X = load_pickle(pickle_path)
+    print(type(y), type(X))
+    print(y.shape, X.shape)
+    #examine_data(3000, y, X)
+    y_shape = y.shape
+    X_shape = X.shape
+    num_el = y_shape[0]
+    print(y_shape, X_shape, num_el)
+    # Want training, test split to be 80%, 20% of total data
+    # Of the remaining training data, want training, validation split to be 80%, 20%
+    [train_data, test_data, train_labels, test_labels] = train_test_split(X, y, test_size=0.20, random_state=101)
+    [train_data, val_data, train_labels, val_labels] = train_test_split(train_data, train_labels, test_size=0.20, random_state=101)
+    #"""Report General statistics on training, testing, validation data sets"""
+    # Want training, test split to be 80%, 20% of total data
+    # Of the remaining training data, want training, validation split to be 80%, 20%
+    numel_train = train_labels.shape[0]
+    numel_test = test_labels.shape[0]
+    numel_validation = val_labels.shape[0]
+    total_samples = numel_train + numel_test + numel_validation
+    print('Total samples = ', total_samples)
+    print('Testing as percentage of whole = %f' % (numel_test/total_samples))
+    print('Training as percentage of whole = %f' % (numel_train/total_samples))
+    print('Validation as percentage of whole = %f' % (numel_validation/total_samples))
+    write_pickle_file(train_path, train_labels, train_data)
+    write_pickle_file(test_path, test_labels, test_data)
+    write_pickle_file(val_path, val_labels, val_data)
 
-        # Get image paths and CSV values
-        line = csv_data[i]
-        center_image_path = line[0]
-        left_image_path = line[1]
-        right_image_path = line[2]
-        steering_angle = line[3]
-        throttle = line[4]
-        break_val = line[5]
-        speed = line[6]
 
-        # Set up labels
-        steer_ang_float = float(steering_angle)
-        steer_ang_np[i] = float(steering_angle)
-
-        # Load images
-        cen_full_path = os.path.join(data_path_root, center_image_path)
-        cen = load_image(cen_full_path)
-        #lef = load_image(left_image_path)
-        #rig = load_image(right_image_path)
-
-
-        print(cen.shape)
-        sys.exit()
-
-
-        # Trim images to only essential parts
-        cen_proc = trim_image(cen, start_row, stop_row)
-        #lef_proc = trim_image(lef, start_row, stop_row)
-        #rig_proc = trim_image(rig, start_row, stop_row)
-        #show_trim_results(cen, lef, rig, cen_proc, lef_proc, rig_proc)
-
-        # Grayscale the image
-        cen_proc = grayscale(cen_proc)
-        #lef_proc = grayscale(lef_proc)
-        #rig_proc = grayscale(rig_proc)
-        #show_grayscale(cen_proc)
-
-        # Normalize the image
-        cen_proc = normalize_image(cen_proc)
-        #lef_proc = normalize_image(lef_proc)
-        #rig_proc = normalize_image(rig_proc)
-
-        # Ensure data is float32 (Tensorflow expects this)
-        cen_proc = cen_proc.astype('float32')
-        #lef_proc = lef_proc.astype('float32')
-        #rig_proc = rig_proc.astype('float32')
-        steer_ang_np = steer_ang_np.astype('float32')
-
-        # Combine images together
-        #final_im = combine_im(lef_proc, cen_proc, rig_proc)
-        #final_im = combine_im(cen_proc)
-        final_im = cen_proc
-
-        images[i,:,:,0] = final_im
-        images = images.astype('float32')
-
-    #examine_data(0, steer_ang_np, images)
-    write_pickle_file(pickle_filename, steer_ang_np, images)
-    #y, X = load_pickle(pickle_filename)
-    #examine_data(0, y, X)
 
 
 

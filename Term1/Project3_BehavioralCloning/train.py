@@ -105,51 +105,67 @@ def build_model(input_shape, num_labels):
 
     """
 
-
+    pool_size = (2, 2)
 
     model = Sequential()
     """Convnet layer 1"""
     model.add(Convolution2D(24,5,5, border_mode='valid', subsample=(2,2), input_shape=input_shape))
     #model.add(Convolution2D(24,5,5, activation='relu', border_mode='valid', subsample=(2,2), input_shape=input_shape))
-    model.add(ELU())
     #model.add(Convolution2D(24,5,5,border_mode='valid', input_shape=input_shape))
-    #model.add(MaxPooling2D(dim_ordering='th'))
+    model.add(MaxPooling2D(dim_ordering='th'))
+    model.add(Activation('relu'))
     #model.add(Activation('relu'))
+    model.add(Dropout(0.1))
+    #model.add(ELU())
+
     #model.add(Dropout(0.1))
     """Convnet layer 2"""
     model.add(Convolution2D(36,5,5, border_mode='valid', subsample=(2,2)))
     #model.add(Convolution2D(36,5,5, activation='relu', border_mode='valid', subsample=(2,2), input_shape=input_shape))
-    model.add(ELU())
     #model.add(Convolution2D(36,5,5,border_mode='valid'))
-    #model.add(MaxPooling2D(dim_ordering='th'))
+    model.add(MaxPooling2D(dim_ordering='th'))
+    model.add(Activation('relu'))
     #model.add(Activation('relu'))
-    #model.add(Dropout(0.1))
+    model.add(Dropout(0.1))
+    #model.add(ELU())
+
     """Convnet layer 3"""
     model.add(Convolution2D(48,5,5, border_mode='valid', subsample=(2,2)))
     #model.add(Convolution2D(48,5,5, activation='relu', border_mode='valid', subsample=(2,2), input_shape=input_shape))
-    model.add(ELU())
     #model.add(Convolution2D(48,5,5,border_mode='valid'))
-    #model.add(MaxPooling2D(dim_ordering='th'))
+    model.add(MaxPooling2D(dim_ordering='th'))
+    model.add(Activation('relu'))
     #model.add(Activation('relu'))
-    #model.add(Dropout(0.1))
+    #model.add(Activation('relu'))
+    model.add(Dropout(0.1))
+    #model.add(ELU())
+
     """Convnet layer 4"""
     model.add(Convolution2D(64,3,3, border_mode='valid', subsample=(1,1)))
     #model.add(Convolution2D(64,3,3, activation='relu', border_mode='valid', subsample=(1,1), input_shape=input_shape))
-    model.add(ELU())
     #model.add(Convolution2D(64,3,3,border_mode='valid'))
-    #model.add(MaxPooling2D(dim_ordering='th'))
-    #model.add(Activation('relu'))
-    #model.add(Dropout(0.1))
-    """Convnet layer 5"""
-    model.add(Convolution2D(64,3,3, border_mode='valid', subsample=(1,1)))
-    #model.add(Convolution2D(64,3,3, activation='relu', border_mode='valid', subsample=(1,1), input_shape=input_shape))
-    model.add(ELU())
-    #model.add(Convolution2D(64,3,3,border_mode='valid'))
-    #model.add(MaxPooling2D(dim_ordering='th'))
+    model.add(MaxPooling2D(dim_ordering='th'))
+    model.add(Activation('relu'))
     #model.add(Activation('relu'))
     model.add(Dropout(0.1))
+    #model.add(ELU())
+
+    model.summary()
+
+    """Convnet layer 5"""
+    model.add(Convolution2D(64,5,1, border_mode='valid', subsample=(1,1)))
+    #model.add(Convolution2D(64,3,3, activation='relu', border_mode='valid', subsample=(1,1), input_shape=input_shape))
+    #model.add(Convolution2D(64,3,3,border_mode='valid'))
+    #model.add(MaxPooling2D(dim_ordering='th'))
+    model.add(Activation('relu'))
+    #model.add(Activation('relu'))
+    model.add(Dropout(0.1))
+    #model.add(ELU())
+
+    #model.add(Dropout(0.1))
     """Flatten"""
     model.add(Flatten())
+
     """First fully-connected layer"""
     model.add(Dense(100))
     #model.add(Activation('relu'))
@@ -170,13 +186,10 @@ def load_model():
     model.load_weights('model.h5')
     return model
 
-if __name__ == '__main__':
-    # User-defined variables
-    train_path = '/Users/blakejacquot/Desktop/temp2/data_train.p'
-    test_path = '/Users/blakejacquot/Desktop/temp2/data_test.p'
-    val_path = '/Users/blakejacquot/Desktop/temp2/data_val.p'
-    batch_size = 32
-    nb_epoch = 2
+def train_on_path(data_path_root, batch_size, nb_epoch, learning_rate):
+    train_path = os.path.join(data_path_root, 'data_train.p')
+    test_path = os.path.join(data_path_root, 'data_test.p')
+    val_path = os.path.join(data_path_root, 'data_val.p')
     num_labels = 1 # the output is a single steering angle
 
     # Load data
@@ -213,7 +226,7 @@ if __name__ == '__main__':
         model = build_model(input_shape, num_labels)
 
     #Adam(lr=0.001, beta_1=0.9, beta_2=0.999, epsilon=1e-08, decay=0.0)
-    Adam(lr=0.001, beta_1=0.9, beta_2=0.999, epsilon=1e-08, decay=0.0)
+    Adam(lr=learning_rate, beta_1=0.9, beta_2=0.999, epsilon=1e-08, decay=0.0)
     model.compile(optimizer='adam',loss='mse')
     model.summary()
 
@@ -226,11 +239,8 @@ if __name__ == '__main__':
     print('num_train_points = ', num_train_points)
     print('train_samples_per_epoch  = ', train_samples_per_epoch)
 
-
     #examine_data(1, y_train, X_train)
 
-
-    #sys.exit()
     history = model.fit_generator(generator, train_samples_per_epoch, nb_epoch, verbose=1,
                         validation_data=(X_val, y_val))
 
@@ -248,3 +258,22 @@ if __name__ == '__main__':
     print('Test loss = ', score)
     #print('Test score:', score[0])
     #print('Test accuracy:', score[1])
+
+if __name__ == '__main__':
+
+    batch_size = 32
+    nb_epoch = 10
+    learning_rate = 0.001
+    # User-defined variables
+    # User-defined variables
+    data_path_root = '/Users/blakejacquot/Desktop/temp2/DrivingSimulator/Data_from_Udacity/'
+    train_on_path(data_path_root, batch_size, nb_epoch, learning_rate)
+    #data_path_root = '/Users/blakejacquot/Desktop/temp2/DrivingSimulator/BCJ_dataset1/'
+    #train_on_path(data_path_root, batch_size, nb_epoch, learning_rate)
+    #data_path_root = '/Users/blakejacquot/Desktop/temp2/DrivingSimulator/BCJ_dataset2/'
+    #train_on_path(data_path_root, batch_size, nb_epoch, learning_rate)
+    #data_path_root = '/Users/blakejacquot/Desktop/temp2/DrivingSimulator/BCJ_dataset3/'
+    #train_on_path(data_path_root, batch_size, nb_epoch, learning_rate)
+
+
+
